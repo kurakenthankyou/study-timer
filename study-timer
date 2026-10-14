@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>仕事と勉強の記録</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="勉強記録">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f3f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141917" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+html{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;font-size:14px;overscroll-behavior:none}
+img{max-width:100%}
+[hidden]{display:none!important}
+button{touch-action:manipulation}
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one-screen phone app — header countdown, two tall stopwatch buttons side by side, tab bar fixed at bottom */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --fg:#1d2422; --muted:#6a736f; --line:#dde1dc;
+  --work:#2f5d8a; --work-soft:#dfe8f1; --study:#c26a1b; --study-soft:#f6e6d6;
+  --on-accent:#ffffff;
+  --font-ui:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --font-num:"Barlow Condensed","Zen Kaku Gothic New",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1e2522; --fg:#e8ece9; --muted:#9aa49f; --line:#2f3834;
+  --work:#6f9fd0; --work-soft:#22313f; --study:#e3954f; --study-soft:#3a2a1c; --on-accent:#10161a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1e2522; --fg:#e8ece9; --muted:#9aa49f; --line:#2f3834;
+  --work:#6f9fd0; --work-soft:#22313f; --study:#e3954f; --study-soft:#3a2a1c; --on-accent:#10161a; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);-webkit-tap-highlight-color:transparent}
+.app{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding-inline:16px;box-sizing:border-box}
+header{padding-block:14px 8px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+header h1{font-size:15px;font-weight:700;margin:0;color:var(--muted);letter-spacing:.04em}
+.count{font-size:14px;color:var(--muted);background:none;border:0;font-family:inherit;padding:4px 0;cursor:pointer}
+.count b{font-family:var(--font-num);font-size:26px;color:var(--fg);font-weight:600;margin-inline:2px}
+main{flex:1;min-height:0;overflow-y:auto;padding-bottom:96px}
+.view[hidden]{display:none!important}
+
+/* Timer */
+.watches{display:grid;grid-template-columns:1fr 1fr;gap:12px;height:100%;min-height:340px;padding-block:6px}
+.watch{border:2px solid var(--line);background:var(--surface);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:inherit;color:var(--fg);padding:16px 8px;transition:background .2s,border-color .2s,transform .08s}
+.watch:active{transform:scale(.98)}
+.watch:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+.watch .label{font-size:30px;font-weight:900;letter-spacing:.1em}
+.watch .time{font-family:var(--font-num);font-weight:600;font-size:clamp(40px,12.5vw,76px);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.watch .unit{font-size:13px;color:var(--muted);letter-spacing:.2em;margin-top:-4px}
+.watch.on .unit{color:var(--on-accent)}
+
+/* Ticker */
+.ticker{margin-inline:-16px;background:var(--fg);color:var(--bg);overflow:hidden;white-space:nowrap;font-size:15px;height:40px;display:flex;align-items:center;position:relative}
+.ticker .tag{position:absolute;left:0;top:0;bottom:0;z-index:1;display:flex;align-items:center;padding-inline:12px 10px;background:var(--study);color:var(--on-accent);font-weight:900;font-size:13px;letter-spacing:.08em}
+.ticker .track{display:inline-flex;will-change:transform;animation:scroll var(--dur,300s) linear infinite}
+.ticker .item{padding-right:56px}
+.ticker .q{font-weight:500}
+.ticker .a{font-weight:900;color:var(--study-soft);margin-left:10px}
+.ticker .a::before{content:"答 ";font-size:12px;opacity:.75}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker .track{animation-duration:calc(var(--dur,300s)*3)}}
+.watch .state{font-size:14px;color:var(--muted);min-height:1.4em}
+.watch.work .label{color:var(--work)} .watch.study .label{color:var(--study)}
+.watch.on.work{background:var(--work);border-color:var(--work)}
+.watch.on.study{background:var(--study);border-color:var(--study)}
+.watch.on .label,.watch.on .time,.watch.on .time small,.watch.on .state{color:var(--on-accent)}
+.watch.on .state::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--on-accent);margin-right:6px;animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.watch.on .state::before{animation:none}.watch{transition:none}}
+.today-sum{text-align:center;color:var(--muted);font-size:14px;padding-top:12px}
+.today-sum b{font-family:var(--font-num);font-size:20px;color:var(--fg);font-weight:600}
+
+/* Calendar */
+.cal-head{display:flex;align-items:center;justify-content:space-between;padding-block:6px 10px}
+.cal-head h2{margin:0;font-size:20px;font-weight:900}
+.navbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:20px;cursor:pointer}
+.navbtn:disabled{opacity:.3}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{text-align:center;font-size:12px;color:var(--muted);padding-bottom:2px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:64px;padding:4px 3px;display:flex;flex-direction:column;gap:3px;cursor:pointer;font-family:inherit;color:var(--fg);text-align:left}
+.day.blank{background:none;border:0;cursor:default}
+.day .d{font-size:12px;font-weight:700}
+.day.today{border:2px solid var(--fg)}
+.day.exam{background:var(--fg);color:var(--bg)}
+.day.exam .d::after{content:" 国試";font-size:10px}
+.day.sel{outline:2px solid var(--study);outline-offset:1px}
+.bars{display:flex;flex-direction:column;gap:2px;margin-top:auto}
+.bar{height:6px;border-radius:3px;min-width:0}
+.bar.w{background:var(--work)} .bar.s{background:var(--study)}
+.day .h{font-family:var(--font-num);font-size:13px;font-weight:600;color:var(--muted)}
+.detail{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:15px}
+.detail .k{font-weight:700}
+.detail .v{font-family:var(--font-num);font-size:22px;font-weight:600;margin-left:6px}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);padding-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* Graph */
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;margin-block:6px 12px}
+.seg button{flex:1;border:0;background:none;padding:10px 0;border-radius:9px;font-family:inherit;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.chart-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 6px 4px;overflow-x:auto}
+.chart-wrap svg{display:block}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stat .k{font-size:13px;color:var(--muted)}
+.stat .v{font-family:var(--font-num);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat.w .k{color:var(--work)} .stat.s .k{color:var(--study)}
+details.backup{margin-top:18px;font-size:14px;color:var(--muted)}
+details.backup summary{cursor:pointer;padding:8px 0}
+details.backup textarea{width:100%;box-sizing:border-box;height:90px;font-size:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);padding:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:10px 14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.msg{min-height:1.4em;margin-top:6px;color:var(--fg)}
+.examset{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.examset input{font-size:16px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+
+/* Tab bar */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+nav button{border:0;background:none;font-family:inherit;font-size:15px;font-weight:700;color:var(--muted);padding:14px 0 16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav button[aria-selected="true"]{color:var(--fg)}
+</style>
+
+<div class="app">
+  <div class="ticker" aria-label="一問一答">
+    <span class="tag">一問一答</span>
+    <div class="track" id="tickerTrack"></div>
+  </div>
+  <header>
+    <h1>仕事と勉強</h1>
+    <button class="count" id="countBtn" type="button">国試まで<b id="daysLeft">–</b>日</button>
+  </header>
+  <main>
+    <section class="view" id="v-timer">
+      <div class="watches">
+        <button class="watch work" id="btn-work" type="button" aria-pressed="false">
+          <span class="label">仕事</span>
+          <span class="time" id="t-work">0:00:00</span>
+          <span class="unit">時間 : 分 : 秒</span>
+          <span class="state" id="s-work">タップで開始</span>
+        </button>
+        <button class="watch study" id="btn-study" type="button" aria-pressed="false">
+          <span class="label">勉強</span>
+          <span class="time" id="t-study">0:00:00</span>
+          <span class="unit">時間 : 分 : 秒</span>
+          <span class="state" id="s-study">タップで開始</span>
+        </button>
+      </div>
+      <p class="today-sum" id="todayLabel">今日の合計</p>
+    </section>
+
+    <section class="view" id="v-cal" hidden>
+      <div class="cal-head">
+        <button class="navbtn" id="prevM" type="button" aria-label="前の月">‹</button>
+        <h2 id="calTitle"></h2>
+        <button class="navbtn" id="nextM" type="button" aria-label="次の月">›</button>
+      </div>
+      <div class="grid" id="calGrid"></div>
+      <div class="legend"><span><i style="background:var(--work)"></i>仕事</span><span><i style="background:var(--study)"></i>勉強</span><span>数字は勉強時間</span></div>
+      <div class="detail" id="calDetail"></div>
+    </section>
+
+    <section class="view" id="v-graph" hidden>
+      <div class="seg" role="group" aria-label="期間">
+        <button type="button" data-range="7" aria-pressed="true">7日</button>
+        <button type="button" data-range="30" aria-pressed="false">30日</button>
+        <button type="button" data-range="all" aria-pressed="false">全期間</button>
+      </div>
+      <div class="chart-wrap"><svg id="chart" role="img" aria-label="1日ごとの仕事と勉強の時間"></svg></div>
+      <div class="legend"><span><i style="background:var(--work)"></i>仕事</span><span><i style="background:var(--study)"></i>勉強</span></div>
+      <div class="stats">
+        <div class="stat w"><div class="k">仕事 合計</div><div class="v" id="sumW">0:00</div></div>
+        <div class="stat s"><div class="k">勉強 合計</div><div class="v" id="sumS">0:00</div></div>
+        <div class="stat w"><div class="k">仕事 1日平均</div><div class="v" id="avgW">0:00</div></div>
+        <div class="stat s"><div class="k">勉強 1日平均</div><div class="v" id="avgS">0:00</div></div>
+      </div>
+
+      <details class="backup">
+        <summary>設定とバックアップ</summary>
+        <div class="examset">
+          <label for="examDate">国試の日付</label>
+          <input type="date" id="examDate">
+        </div>
+        <p>記録はこのiPhoneのSafariの中に保存されます。機種変更やデータ消去に備えて、ときどき書き出してメモ帳などに貼っておいてください。</p>
+        <textarea id="backupText" aria-label="バックアップ用テキスト"></textarea>
+        <div class="row">
+          <button class="btn" id="exportBtn" type="button">書き出してコピー</button>
+          <button class="btn" id="importBtn" type="button">貼り付けた内容で復元</button>
+        </div>
+        <p class="msg" id="backupMsg"></p>
+      </details>
+    </section>
+  </main>
+</div>
+
+<nav>
+  <div class="in" role="tablist">
+    <button type="button" role="tab" data-view="v-timer" aria-selected="true">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/></svg>タイマー</button>
+    <button type="button" role="tab" data-view="v-cal" aria-selected="false">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>カレンダー</button>
+    <button type="button" role="tab" data-view="v-graph" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>グラフ</button>
+  </div>
+</nav>
+
+<script>
+(function(){
+  const KEY = "kokushi-log-v1";
+  const TYPES = ["work","study"];
+  const DEFAULT_EXAM = "2027-02-20";
+  let state = { days:{}, running:null, exam:DEFAULT_EXAM };
+
+  function load(){
+    try{ const raw = localStorage.getItem(KEY); if(raw){ const s = JSON.parse(raw); if(s && s.days) state = Object.assign(state, s); } }catch(e){}
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  const pad = n => String(n).padStart(2,"0");
+  const keyOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const parseKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y,m-1,d); };
+
+  // Add an interval, split at midnight so each day gets its own share
+  function addInterval(type, start, end){
+    let t = start;
+    while(t < end){
+      const d = new Date(t);
+      const next = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1).getTime();
+      const segEnd = Math.min(end, next);
+      const k = keyOf(d);
+      state.days[k] = state.days[k] || {work:0, study:0};
+      state.days[k][type] += segEnd - t;
+      t = segEnd;
+    }
+  }
+  // Day totals including the running interval
+  function dayTotals(k){
+    const base = state.days[k] || {work:0, study:0};
+    const out = {work:base.work||0, study:base.study||0};
+    if(state.running){
+      const ds = parseKey(k).getTime(), de = ds + 0;
+      const dayEnd = new Date(parseKey(k).getFullYear(), parseKey(k).getMonth(), parseKey(k).getDate()+1).getTime();
+      const s = Math.max(state.running.start, ds), e = Math.min(Date.now(), dayEnd);
+      if(e > s) out[state.running.type] += e - s;
+    }
+    return out;
+  }
+  function stopRunning(){
+    if(!state.running) return;
+    addInterval(state.running.type, state.running.start, Date.now());
+    state.running = null;
+  }
+  function press(type){
+    const wasThis = state.running && state.running.type === type;
+    stopRunning();
+    if(!wasThis) state.running = {type, start:Date.now()};
+    save(); renderTimer(); requestWake();
+  }
+
+  const hm = ms => { const m = Math.floor(ms/60000); return {h:Math.floor(m/60), m:m%60}; };
+  const fmt = ms => { const x = hm(ms); return x.h+":"+pad(x.m); };
+
+  // ---- Timer view
+  function renderTimer(){
+    const t = dayTotals(keyOf(new Date()));
+    TYPES.forEach(type=>{
+      const sec = Math.floor(t[type]/1000);
+      document.getElementById("t-"+type).textContent = Math.floor(sec/3600)+":"+pad(Math.floor(sec/60)%60)+":"+pad(sec%60);
+      const on = state.running && state.running.type === type;
+      const btn = document.getElementById("btn-"+type);
+      btn.classList.toggle("on", !!on);
+      btn.setAttribute("aria-pressed", on ? "true":"false");
+      const since = on ? new Date(state.running.start) : null;
+      document.getElementById("s-"+type).textContent = on ? pad(since.getHours())+":"+pad(since.getMinutes())+"から計測中" : "タップで開始";
+    });
+    const now = new Date();
+    document.getElementById("todayLabel").innerHTML = (now.getMonth()+1)+"月"+now.getDate()+"日の合計 <b>"+fmt(t.work+t.study)+"</b>";
+    renderCountdown();
+  }
+  function renderCountdown(){
+    const exam = parseKey(state.exam || DEFAULT_EXAM);
+    const diff = Math.round((exam - startOfDay(new Date()))/86400000);
+    document.getElementById("daysLeft").textContent = diff >= 0 ? diff : "–";
+  }
+
+  // ---- Calendar view
+  let calMonth = new Date(); calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+  let selKey = keyOf(new Date());
+  function monthBounds(){
+    const keys = Object.keys(state.days).sort();
+    const first = keys.length ? parseKey(keys[0]) : new Date();
+    const exam = parseKey(state.exam || DEFAULT_EXAM);
+    return { min:new Date(first.getFullYear(), first.getMonth(), 1), max:new Date(exam.getFullYear(), exam.getMonth(), 1) };
+  }
+  function renderCal(){
+    const b = monthBounds();
+    if(calMonth < b.min) calMonth = b.min;
+    document.getElementById("calTitle").textContent = calMonth.getFullYear()+"年"+(calMonth.getMonth()+1)+"月";
+    document.getElementById("prevM").disabled = calMonth <= b.min;
+    document.getElementById("nextM").disabled = calMonth >= b.max;
+    const g = document.getElementById("calGrid"); g.innerHTML = "";
+    "日月火水木金土".split("").forEach(d=>{ const e=document.createElement("div"); e.className="dow"; e.textContent=d; g.appendChild(e); });
+    const lead = calMonth.getDay();
+    for(let i=0;i<lead;i++){ const e=document.createElement("div"); e.className="day blank"; g.appendChild(e); }
+    const daysIn = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0).getDate();
+    const MAXH = 10*3600000; // a full bar = 10 hours
+    const todayK = keyOf(new Date());
+    for(let d=1; d<=daysIn; d++){
+      const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), d);
+      const k = keyOf(date), t = dayTotals(k);
+      const e = document.createElement("button"); e.type="button"; e.className="day";
+      if(k===todayK) e.classList.add("today");
+      if(k===state.exam) e.classList.add("exam");
+      if(k===selKey) e.classList.add("sel");
+      let html = '<span class="d">'+d+'</span>';
+      if(t.study>0) html += '<span class="h">'+fmt(t.study)+'</span>';
+      html += '<span class="bars">';
+      if(t.work>0) html += '<span class="bar w" style="width:'+Math.min(100,Math.max(8,t.work/MAXH*100))+'%"></span>';
+      if(t.study>0) html += '<span class="bar s" style="width:'+Math.min(100,Math.max(8,t.study/MAXH*100))+'%"></span>';
+      html += '</span>';
+      e.innerHTML = html;
+      e.setAttribute("aria-label", (date.getMonth()+1)+"月"+d+"日 仕事"+fmt(t.work)+" 勉強"+fmt(t.study));
+      e.addEventListener("click", ()=>{ selKey = k; renderCal(); });
+      g.appendChild(e);
+    }
+    const sd = parseKey(selKey), st = dayTotals(selKey);
+    document.getElementById("calDetail").innerHTML =
+      '<span class="k">'+(sd.getMonth()+1)+'月'+sd.getDate()+'日（'+"日月火水木金土"[sd.getDay()]+'）</span>'+
+      '<span>仕事<span class="v" style="color:var(--work)">'+fmt(st.work)+'</span></span>'+
+      '<span>勉強<span class="v" style="color:var(--study)">'+fmt(st.study)+'</span></span>';
+  }
+
+  // ---- Graph view
+  let range = "7";
+  function renderGraph(){
+    const today = startOfDay(new Date());
+    let n;
+    if(range==="all"){
+      const keys = Object.keys(state.days).sort();
+      n = keys.length ? Math.round((today - parseKey(keys[0]))/86400000)+1 : 7;
+      n = Math.max(n, 7);
+    } else n = Number(range);
+    const days = [];
+    for(let i=n-1;i>=0;i--){ const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()-i); days.push({d, t:dayTotals(keyOf(d))}); }
+    const maxMs = Math.max(3600000, ...days.map(x=>Math.max(x.t.work, x.t.study)));
+    const maxH = Math.max(2, Math.ceil(maxMs/3600000/2)*2);
+    const css = getComputedStyle(document.documentElement);
+    const wrapW = document.querySelector(".chart-wrap").clientWidth - 12;
+    const left = 30, bottom = 26, top = 10, H = 230;
+    const slot = Math.max(n<=7 ? (wrapW-left)/n : 22, 22);
+    const W = left + slot*n + 4;
+    const y = h => top + (H-top-bottom) * (1 - h/maxH);
+    let s = "";
+    for(let h=0; h<=maxH; h+= (maxH<=6?1:2)){
+      s += '<line x1="'+left+'" x2="'+W+'" y1="'+y(h)+'" y2="'+y(h)+'" stroke="var(--line)" stroke-width="1"/>';
+      s += '<text x="'+(left-6)+'" y="'+(y(h)+4)+'" text-anchor="end" font-size="11" fill="var(--muted)">'+h+'h</text>';
+    }
+    const bw = Math.min(14, slot*0.32);
+    days.forEach((x,i)=>{
+      const cx = left + slot*i + slot/2;
+      const hw = x.t.work/3600000, hs = x.t.study/3600000;
+      if(hw>0) s += '<rect x="'+(cx-bw-1)+'" y="'+y(hw)+'" width="'+bw+'" height="'+(y(0)-y(hw))+'" rx="2" fill="var(--work)"><title>仕事 '+fmt(x.t.work)+'</title></rect>';
+      if(hs>0) s += '<rect x="'+(cx+1)+'" y="'+y(hs)+'" width="'+bw+'" height="'+(y(0)-y(hs))+'" rx="2" fill="var(--study)"><title>勉強 '+fmt(x.t.study)+'</title></rect>';
+      const showLabel = n<=7 || x.d.getDate()===1 || x.d.getDay()===1;
+      if(showLabel) s += '<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="var(--muted)">'+(n<=7 ? (x.d.getMonth()+1)+"/"+x.d.getDate()+" "+"日月火水木金土"[x.d.getDay()] : (x.d.getMonth()+1)+"/"+x.d.getDate())+'</text>';
+    });
+    const svg = document.getElementById("chart");
+    svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+    svg.innerHTML = s;
+    const wrap = document.querySelector(".chart-wrap"); wrap.scrollLeft = wrap.scrollWidth;
+    const sw = days.reduce((a,x)=>a+x.t.work,0), ss = days.reduce((a,x)=>a+x.t.study,0);
+    document.getElementById("sumW").textContent = fmt(sw);
+    document.getElementById("sumS").textContent = fmt(ss);
+    document.getElementById("avgW").textContent = fmt(sw/n);
+    document.getElementById("avgS").textContent = fmt(ss/n);
+  }
+
+  // ---- Tabs
+  let current = "v-timer";
+  function show(id){
+    current = id;
+    document.querySelectorAll(".view").forEach(v=> v.hidden = v.id!==id);
+    document.querySelectorAll("nav button").forEach(b=> b.setAttribute("aria-selected", b.dataset.view===id ? "true":"false"));
+    renderCurrent();
+  }
+  function renderCurrent(){
+    if(current==="v-timer") renderTimer();
+    else if(current==="v-cal"){ renderCal(); renderCountdown(); }
+    else { renderGraph(); renderCountdown(); }
+  }
+
+  // ---- Wake lock (keeps screen on while measuring, if allowed)
+  let wake = null;
+  async function requestWake(){
+    try{
+      if(state.running && navigator.wakeLock && !wake){ wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", ()=> wake=null); }
+      if(!state.running && wake){ await wake.release(); wake=null; }
+    }catch(e){ wake = null; }
+  }
+
+  // ---- Events
+  document.getElementById("btn-work").addEventListener("click", ()=>press("work"));
+  document.getElementById("btn-study").addEventListener("click", ()=>press("study"));
+  document.querySelectorAll("nav button").forEach(b=> b.addEventListener("click", ()=>show(b.dataset.view)));
+  document.getElementById("prevM").addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1); renderCal(); });
+  document.getElementById("nextM").addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1); renderCal(); });
+  document.querySelectorAll(".seg button").forEach(b=> b.addEventListener("click", ()=>{
+    range = b.dataset.range;
+    document.querySelectorAll(".seg button").forEach(x=> x.setAttribute("aria-pressed", x===b ? "true":"false"));
+    renderGraph();
+  }));
+  document.getElementById("countBtn").addEventListener("click", ()=>{ show("v-graph"); const d=document.querySelector("details.backup"); d.open = true; document.getElementById("examDate").focus(); });
+  const examInput = document.getElementById("examDate");
+  examInput.addEventListener("change", ()=>{ if(examInput.value){ state.exam = examInput.value; save(); renderCurrent(); } });
+
+  const msg = t => document.getElementById("backupMsg").textContent = t;
+  document.getElementById("exportBtn").addEventListener("click", ()=>{
+    const ta = document.getElementById("backupText");
+    ta.value = JSON.stringify(state);
+    const done = ()=> msg("コピーしました。メモ帳などに貼って保管してください。");
+    try{ navigator.clipboard.writeText(ta.value).then(done, ()=>{ ta.select(); msg("テキストを選択しました。コピーして保管してください。"); }); }
+    catch(e){ ta.select(); msg("テキストを選択しました。コピーして保管してください。"); }
+  });
+  document.getElementById("importBtn").addEventListener("click", ()=>{
+    try{
+      const s = JSON.parse(document.getElementById("backupText").value);
+      if(!s || typeof s.days!=="object") throw new Error();
+      state = { days:s.days, running:s.running||null, exam:s.exam||DEFAULT_EXAM };
+      save(); examInput.value = state.exam; msg("復元しました。"); renderCurrent();
+    }catch(e){ msg("読み込めませんでした。書き出したテキストをそのまま貼り付けてください。"); }
+  });
+
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ load(); renderCurrent(); requestWake(); } });
+  window.addEventListener("resize", ()=>{ if(current==="v-graph") renderGraph(); });
+
+  load();
+  examInput.value = state.exam || DEFAULT_EXAM;
+  show("v-timer");
+  setInterval(()=>{ if(current==="v-timer") renderTimer(); }, 1000);
+
+  // ---- Ticker: 一問一答 (出題範囲の定番事項から作成。過去問の原文ではない)
+  const QA = [
+    ["ワルファリンの作用を打ち消すビタミンは？","ビタミンK"],
+    ["ワルファリン投与時に用いる凝固能の指標は？","PT-INR"],
+    ["ヘパリンの拮抗薬は？","プロタミン硫酸塩"],
+    ["アセトアミノフェン中毒の解毒薬は？","アセチルシステイン"],
+    ["オピオイドによる呼吸抑制の拮抗薬は？","ナロキソン"],
+    ["ベンゾジアゼピン系薬の拮抗薬は？","フルマゼニル"],
+    ["有機リン中毒に用いるコリンエステラーゼ再賦活薬は？","プラリドキシム（PAM）"],
+    ["メトトレキサートの毒性軽減に用いる薬は？","ホリナートカルシウム"],
+    ["ACE阻害薬による空咳に関わる物質は？","ブラジキニン"],
+    ["スタチンが阻害する酵素は？","HMG-CoA還元酵素"],
+    ["グレープフルーツジュースが阻害する代謝酵素は？","小腸のCYP3A4"],
+    ["ジゴキシン中毒を起こしやすくする電解質異常は？","低カリウム血症"],
+    ["アミノグリコシド系抗菌薬の代表的な副作用は？","腎障害と第8脳神経障害（聴覚障害）"],
+    ["β-ラクタム系抗菌薬の作用機序は？","細胞壁（ペプチドグリカン）合成阻害"],
+    ["ニューキノロン系抗菌薬の作用機序は？","DNAジャイレース・トポイソメラーゼIV阻害"],
+    ["テトラサイクリン系の吸収を低下させる併用は？","Ca・Mg・Al・Feなど金属カチオン"],
+    ["メトホルミンの重大な副作用は？","乳酸アシドーシス"],
+    ["SGLT2阻害薬の作用部位は？","腎臓の近位尿細管"],
+    ["リドカインが遮断するチャネルは？","電位依存性Na⁺チャネル"],
+    ["プロトンポンプ阻害薬が阻害する酵素は？","H⁺,K⁺-ATPase"],
+    ["アスピリンが不可逆的に阻害する酵素は？","シクロオキシゲナーゼ（COX）"],
+    ["抗コリン薬が禁忌となる眼疾患は？","閉塞隅角緑内障"],
+    ["非選択的β遮断薬が禁忌となる呼吸器疾患は？","気管支喘息"],
+    ["脂溶性ビタミンは？","ビタミンA・D・E・K"],
+    ["一次速度過程の消失半減期の式は？","t1/2 = 0.693 ÷ ke"],
+    ["分布容積の定義は？","体内薬物量 ÷ 血中薬物濃度"],
+    ["糸球体ろ過量の測定に用いる代表的な物質は？","イヌリン"],
+    ["毒薬の容器の表示は？","黒地に白枠・白字で品名と「毒」"],
+    ["劇薬の容器の表示は？","白地に赤枠・赤字で品名と「劇」"],
+    ["麻薬の保管方法は？","麻薬以外と区別し、鍵をかけた堅固な設備に保管"],
+    ["薬局の調剤済み処方箋の保存期間は？","調剤済みとなった日から3年間"],
+    ["薬剤師が調剤の求めを拒める条件は？","正当な理由がある場合のみ（薬剤師法第21条）"]
+  ];
+  function buildTicker(){
+    const items = QA.slice().sort(()=>Math.random()-0.5);
+    const esc = s => s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const one = items.map(([q,a])=>'<span class="item"><span class="q">'+esc(q)+'</span><span class="a">'+esc(a)+'</span></span>').join("");
+    const track = document.getElementById("tickerTrack");
+    track.innerHTML = '<span style="display:inline-block;width:96px"></span>' + one + '<span style="display:inline-block;width:96px"></span>' + one;
+    requestAnimationFrame(()=>{
+      const half = track.scrollWidth/2;
+      track.style.setProperty("--dur", Math.round(half/55)+"s"); // 約55px/秒
+    });
+  }
+  buildTicker();
+})();
+</script>
+
+<script>
+if("serviceWorker" in navigator){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+</script>
+</body>
+</html>
+
+{
+  "name": "仕事と勉強の記録",
+  "short_name": "勉強記録",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1d2422",
+  "theme_color": "#1d2422",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+
+// 画面を端末に保存し、電波がなくても開けるようにする
+const CACHE = "kokushi-v1";
+const FILES = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"];
+self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
+self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
+self.addEventListener("fetch", e => {
+  if (e.request.method !== "GET") return;
+  // 新しい版があれば取りに行き、取れなければ保存済みを使う
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
+      return res;
+    }).catch(() => caches.match(e.request).then(r => r || caches.match("index.html")))
+  );
+});
